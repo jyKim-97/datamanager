@@ -1,0 +1,7 @@
+*__pycache__/*
+*.pyc
+*.vscode
+*.egg-info
+test/*
+*.zip
+build/*

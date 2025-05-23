@@ -8,9 +8,8 @@ from dataclasses import dataclass
 import functools
 import uuid
 from tqdm import tqdm
-from typing import List
 import shutil
-from typing import Dict
+from typing import Dict, List
 
 
 BAR_WIDTH = 40
@@ -26,7 +25,7 @@ class VideoInfo:
     width: int
     height: int
     fps: float
-    duration: float
+    duration: float # minutes
     codec: str
     bitrate: int # M
 
@@ -83,53 +82,6 @@ def move_encoded_files(buf_path, raw_video_dir, meta_subset):
         shutil.move(src_enc, dst_enc)
     
     os.rmdir(buf_path)
-    
-    
-    
-    
-
-# def process_video(root_dir, raw_video_dir, meta_subset: List, input_file, t_seg: int, opt_encoding: VideoInfo, pbar_obj=tqdm):
-#     buf_path = make_temporal_dir(root_dir)
-    
-#     # cut raw video
-#     cut_raw_video(input_file=input_file,
-#                   output_file=os.path.join(buf_path, "raw"),
-#                   segment_time=t_seg,
-#                   pbar_obj=pbar_obj, desc="cutting raw video")
-    
-#     fnames_raw = ["raw" in f for f in os.listdir(buf_path)]
-    
-    
-#     # compress video
-#     compress_video_with_progress(input_file=input_file,
-#                                  output_file=os.path.join(buf_path, "encoded"),
-#                                  fps=opt_encoding.fps,
-#                                  bitrate=f"{opt_encoding.bitrate}M",
-#                                  resolution=f"{opt_encoding.width}x{opt_encoding.height}",
-#                                  segment_time=t_seg,
-#                                  pbar_obj=pbar_obj, desc="encoding video")
-    
-#     # move files
-#     fnames_raw = ["raw" in f for f in os.listdir(buf_path)]
-#     fnames_enc = ["encoded" in f for f in os.listdir(buf_path)]
-#     assert len(fnames_raw) == len(fnames_enc) == len(meta_subset)
-    
-#     for n, meta_sub in enumerate(meta_subset):
-        
-#         src_raw = os.path.join(buf_path, "raw_%03d.mp4"%(n))
-#         src_enc = os.path.join(buf_path, "encoded_%03d.mp4"%(n))
-        
-#         time_str = meta_sub.rec2str()
-#         dst_raw = os.path.join(raw_video_dir, "raw_%s"%(time_str)+os.path.splitext(src_raw)[1])
-#         dst_enc = os.path.join(meta_sub.project_dir, "encoded_%s"%(time_str)+os.path.splitext(src_enc)[1])
-        
-#         print(f"Moving files from {src_raw} to {dst_raw}")
-#         print(f"Moving files from {src_enc} to {dst_enc}")
-        
-#         # shutil.move(src_raw, dst_raw)
-#         # shutil.move(src_enc, dst_enc)
-    
-#     os.rmdir(buf_path)
     
     
 def make_temporal_dir(root_dir: str):
@@ -283,15 +235,6 @@ def compress_video_with_progress(input_file=None, output_file=None, fps=30, bitr
         output=output_file
     )
     
-    # cmd = [
-    #     "ffmpeg", "-y",
-    #     "-i", input_file,
-    #     "-c:v", "libx264",
-    #     "-b:v", bitrate,
-    #     "-r", "%d"%(fps),
-    #     "-an",
-    # ]
-    
     # WILL NOT BE USED
     vf_parts = []
     if resolution:
@@ -311,19 +254,7 @@ def compress_video_with_progress(input_file=None, output_file=None, fps=30, bitr
             "-segment_format", "avi",
         ]
 
-        # cmd += [
-        #     "-f", "segment",
-        #     "-segment_time", str(segment_time),
-        #     "-reset_timestamps", "1",
-        #     "-map", "0:v:0",
-        #     "-segment_format", "avi",
-        #     output_file + "_%03d.avi"
-        # ]
-    # else:
-    #     cmd += [output_file]
-
     return cmd
-    # return subprocess.Popen(cmd, stderr=subprocess.PIPE, universal_newlines=True)
     
     
 @run_with_ffmpeg_progress(duration_func=lambda input_path: get_video_duration(input_path))
@@ -342,40 +273,16 @@ def cut_raw_video(input_file=None, output_file=None, segment_time=-1, **kwargs):
             "-map_metadata", "0",
             "-map", "0",
             "-f", "segment",
-            "-segment_time", str(segment_time),
+            "-segment_time", str(segment_time*60), # min -> sec
             "-reset_timestamps", "1",
         ],
         output=output_file+"_%03d"+ext
     )
-    
-    # cmd = [
-    #     "ffmpeg", "-y",
-    #     "-i", input_file,
-    #     "-c", "copy",
-    #     "-map_metadata", "0",
-    #     "-map", "0",
-    #     "-f", "segment",
-    #     "-segment_time", str(segment_time),
-    #     "-reset_timestamps", "1",
-    #     output_file + "_%03d"+ext
-    # ]
 
     return cmd
     
-    # return run_with_cmd(cmd)
-    
 
 if __name__ == "__main__":
-    # input_video = "test.mp4"
-    # input_video = "test2.mkv"
-    # output_video = 'output_video.avi'
-    # compress_video_with_progress(input_video, output_video, resolution="1280x720", fps=24, histeq=True, segment_time=20)
-    # compress_video_with_progress(input_file=input_video, output_file=output_video, resolution="1280x720", fps=24, histeq=True, segment_time=40)
-    
-    
-    cut_raw_video(input_file="C:\\Users\\jungyoung\\Desktop\\Project\\tools_gui\\data_arranger\\test\\testdata\\test2.mkv",
-                  output_file="C:\\Users\\jungyoung\\Desktop\\Project\\tools_gui\\data_arranger\\test\\root_dir\\tmp_0dceb6ea\\raw",
-                  segment_time=60,
-                  pbar_obj=tqdm)
+    pass
 
 

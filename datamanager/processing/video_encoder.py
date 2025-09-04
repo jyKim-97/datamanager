@@ -75,9 +75,10 @@ def encode_video(project_dir, input_file, recording_start: datetime, opt_encodin
     #     t0 = t0 + timedelta(minutes=dur)
     
     if copy_raw_video:
-        basedir = os.path.dirname(project_dir)
-        os.makedirs(os.path.join(basedir, "RAW_VIDEO"), exist_ok=True)
-        shutil.copy(input_file, os.path.join(basedir, "RAW_VIDEO", "video_" + os.path.basename(input_file)))
+        # basedir = os.path.dirname(project_dir)
+        basename = os.path.basename(project_dir)
+        os.makedirs(os.path.join(project_dir, "RAW_VIDEO"), exist_ok=True)
+        shutil.copy(input_file, os.path.join(project_dir, "RAW_VIDEO", "video_" + basename[5:]))
         
     return t0_set
 
@@ -173,7 +174,7 @@ def run_with_ffmpeg_progress(duration_func):
                 input_file = kwargs.get("input_file")
                 duration = duration_func(input_file) * 60 # min -> sec
                 pbar_obj = kwargs.get("pbar_obj", tqdm)
-                desc = kwargs.get("desc", "Encoding")
+                desc = kwargs.get("desc", "Encoding video")
 
                 # tqdm bar setup
                 error_lines = []

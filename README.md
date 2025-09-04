@@ -15,6 +15,9 @@
     6) 환경변수 편집으로 들어가서 PATH에 압축해제한 경로 입력
         - 예를 들어 Desktop에 풀어두었다면 Desktop/ffmpeg/bin/ 폴더 추가
 
+3. 비디오 인코딩 GPU 가속 (h264_nvenc 코덱 사용)
+    1) https://www.nvidia.com/ko-kr/drivers/ 에서 GPU 버전에 맞는 NVIDIA display driver 설치
+
 # Run program & functions
 - Open windows terminal
 ```

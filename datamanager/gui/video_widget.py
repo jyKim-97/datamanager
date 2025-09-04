@@ -3,13 +3,14 @@ from PyQt5.QtWidgets import (
 )
 
 import os
-from ..processing.video_encoder import get_video_info, process_video, move_encoded_files
+from ..processing.video_encoder import get_video_info, encode_video
 from .utils_gui import error2messagebox
 from .custom_widget import QFileSelector, QSpinBox_inline
 from .base import BaseWidget
 from typing import List
 from .utils_gui import tqdm_qt
 from copy import deepcopy
+from datetime import datetime
 
 
 class VideoSetupGroup(QGroupBox, BaseWidget):
@@ -84,6 +85,7 @@ class VideoSetupGroup(QGroupBox, BaseWidget):
     @error2messagebox(to_warn=True)
     def update_videoinfo(self, file_path):
         self.video_info = get_video_info(file_path)
+        # print(self.video_info)
         self.video_path = file_path
         
         # update video info
@@ -91,33 +93,18 @@ class VideoSetupGroup(QGroupBox, BaseWidget):
         self.raw_bitrate.setText("%.2f"%(self.video_info.bitrate/1000))
         self.raw_duration.setText("%.2f"%(self.video_info.duration))
         
-    def encode_video(self, root_dir: str, t_seg: int=0):
+    def read_encoding_info(self):
+        encoding_info = deepcopy(self.video_info)
+        encoding_info.fps = int(self.spin_fps.value())
+        encoding_info.bitrate = int(self.spin_bitrate.value()) // 1000 # -> K
+        encoding_info.duration = int(self.spin_seg.value()) # min
+        return encoding_info
         
-        encode_info = deepcopy(self.video_info)
-        encode_info.fps = int(self.spin_fps.value())
-        encode_info.bitrate = int(self.spin_bitrate.value()) // 1000
-        encode_info.duration = int(self.spin_seg.value()) * 60
-        
-        self.buf_path, dur_set = process_video(root_dir, self.video_path, 
-                                               t_seg, encode_info, pbar_obj=tqdm_qt)
-        
-        return dur_set, encode_info
-                
-    def run(self, root_dir: str, meta_subset: List):
-        raw_video_dir = os.path.join(root_dir, "RAW_VIDEO")
-        if not os.path.exists(raw_video_dir):
-            os.mkdir(raw_video_dir)
-            
-        move_encoded_files(self.buf_path, raw_video_dir, meta_subset)
-        
-        # raw_video_dir = os.path.join(root_dir, "RAW_VIDEO")
-        # if not os.path.exists(raw_video_dir):
-        #     os.mkdir(raw_video_dir)
+    def run(self, project_dir, recording_start, encoding_info=None, copy_raw_video=True) -> List[datetime]:
+        if encoding_info is None:
+            encoding_info = self.read_encoding_info()
 
-        # encode_info = deepcopy(self.video_info)
-        # encode_info.fps = int(self.spin_fps.value())
-        # encode_info.bitrate = int(self.spin_bitrate.value()) // 1000
-        
-        # process_video(root_dir, raw_video_dir, meta_subset,
-        #               self.video_path, t_seg, encode_info, pbar_obj=tqdm_qt)
+        t0_set = encode_video(project_dir, self.video_path, recording_start,
+                              encoding_info, copy_raw_video=copy_raw_video, pbar_obj=tqdm_qt)
+        return t0_set
         

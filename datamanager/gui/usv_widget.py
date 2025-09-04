@@ -10,6 +10,7 @@ from typing import List
 from .base import BaseWidget
 from .custom_widget import QFileSelector
 from ..processing import usv_arranger as ua
+from .utils_gui import tqdm_qt
 
 
 class USVSetupGroup(QGroupBox, BaseWidget):
@@ -71,7 +72,7 @@ class USVSetupGroup(QGroupBox, BaseWidget):
             is_fill = is_fill and self.usv_selector[n].is_selected()
         return is_fill
             
-    def run(self, meta_subset: List):
+    def run(self, meta, t0_set):
         usv_files = []
         for n in range(self.num_usv):
             if self.usv_selector[n].is_selected():
@@ -79,5 +80,5 @@ class USVSetupGroup(QGroupBox, BaseWidget):
         
         if len(usv_files) == 0:
             return 
-        
-        ua.organize_usv_files(usv_files, meta_subset)
+
+        ua.organize_usv_files(usv_files, t0_set, meta.project_dir, pbar_obj=tqdm_qt)

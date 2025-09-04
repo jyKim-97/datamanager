@@ -12,6 +12,19 @@ from datetime import datetime
 from typing import List
 
 
+def editable_datetime():
+    
+    default_str = datetime.strftime(meta.default_datetime, "%Y-%m-%d %H:%M")
+    default_dt = QDateTime.fromString(default_str, "yyyy-MM-dd HH:mm")
+    
+    dobj = QDateTimeEdit(QDateTime.currentDateTime())
+    dobj.setDisplayFormat("yyyy-MM-dd HH:mm")
+    dobj.setCalendarPopup(True)  # enables date picker
+    dobj.setDateTime(default_dt)
+
+    return dobj
+
+
 class MetaSetupGroup(QGroupBox, BaseWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,17 +58,19 @@ class MetaSetupGroup(QGroupBox, BaseWidget):
                 
         # recording start
         # default_str = "2025-01-01 00:00:00"
-        default_str = datetime.strftime(meta.default_datetime, "%Y-%m-%d %H:%M:%S")
-        default_dt = QDateTime.fromString(default_str, "yyyy-MM-dd HH:mm:ss")
+        # default_str = datetime.strftime(meta.default_datetime, "%Y-%m-%d %H:%M:%S")
+        # default_dt = QDateTime.fromString(default_str, "yyyy-MM-dd HH:mm:ss")
 
-        self.datetime_edit = QDateTimeEdit(QDateTime.currentDateTime())
-        self.datetime_edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
-        self.datetime_edit.setCalendarPopup(True)  # enables date picker
-        self.datetime_edit.setDateTime(default_dt)
+        # self.datetime_edit = QDateTimeEdit(QDateTime.currentDateTime())
+        # self.datetime_edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        # self.datetime_edit.setCalendarPopup(True)  # enables date picker
+        # self.datetime_edit.setDateTime(default_dt)
 
-        layout_form.addRow("recording start (KST)", self.datetime_edit)    
+        self.date_start = editable_datetime()
+        # self.date_top = editable_datetime()
+        layout_form.addRow("recording start (KST)", self.date_start)    
         layout.addLayout(layout_form)
-        
+
         layout.addWidget(QLabel("Note"))
         self.note = QPlainTextEdit("")
         layout.addWidget(self.note)
@@ -71,8 +86,14 @@ class MetaSetupGroup(QGroupBox, BaseWidget):
             setattr(m, k, v.text())
     
         m.note = self.note.toPlainText()
-        m.recording_start = self.datetime_edit.dateTime().toPyDateTime()
+        m.recording_start = self.date_start.dateTime().toPyDateTime()
         m.update_endtime(self.dur)
+        
+        # print("="*50)
+        # print("Recording start: ", m.recording_start)
+        # print("Recording stop: ", m.recording_end)
+        # print("="*50)
+        
         return m
         
     def update_duration(self, dur: float):
@@ -82,19 +103,13 @@ class MetaSetupGroup(QGroupBox, BaseWidget):
     def check_fill(self):
         return self.meta.validate()
     
-    def run(self, root_dir: str, dur_set: List):
-        """
-        collect typed meta information
-        """
+    def run(self, root_dir: str):
         if self.dur is None:
             raise ValueError("Load video file first (or run 'update_duration' method first)")
-        
-        # encoding_info = self.meta.encoding_info
         self.meta = self.build_meta()
-        # self.meta.encoding_info = encoding_info
+        print(self.meta)
         
-        meta_subset = self.meta.split(dur_set)
-        for meta_sub in meta_subset:
-            meta_sub.make_project_dir(root_dir)
+        # make directory for the video
+        self.meta.make_project_dir(root_dir)
         
-        return meta_subset
+        # print(self.meta.project_dir)

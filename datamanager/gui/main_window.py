@@ -25,9 +25,9 @@ class DataManagerGUI(QWidget):
         layout = QVBoxLayout()
     
         # set root directory
-        self.gb_root = QGroupBox("Root Directory Setting")
+        self.gb_root = QGroupBox("Project Directory Setting")
         layout_root = QVBoxLayout()
-        self.file_selector = QFileSelector("Root Directory", is_dir=True,
+        self.file_selector = QFileSelector("Project Directory", is_dir=True,
                                            default_path=kwargs.get("root_dir", None))
         layout_root.addWidget(self.file_selector)
         self.gb_root.setLayout(layout_root)
@@ -46,8 +46,8 @@ class DataManagerGUI(QWidget):
         self.gb_rfid = RFIDSetupGroup("RFID Setup")
         layout.addWidget(self.gb_rfid, stretch=1)
         
-        # Arrange
-        self.button_arrange = QPushButton("Arrange")
+        # Organize dataset
+        self.button_arrange = QPushButton("Organize dataset")
         self.button_arrange.clicked.connect(self.organize_files)
         
         layout_tot.addLayout(layout, stretch=1)
@@ -69,20 +69,48 @@ class DataManagerGUI(QWidget):
         
         # construct meta data
         self.gb_meta.meta.is_video = self.gb_video.check_fill()
-        self.gb_meta.meta.is_usv = self.gb_usv.check_fill()
+        self.gb_meta.meta.is_usv  = self.gb_usv.check_fill()
         self.gb_meta.meta.is_rfid = self.gb_rfid.check_fill()
         
         t_dur = self.gb_video.video_info.duration # minutes (int)
+        encoding_info = self.gb_video.read_encoding_info()
         self.gb_meta.update_duration(t_dur)  # update duration
+        self.gb_meta.meta.set_videoinfo(encoding_info)
+        print("encoding info:", encoding_info)
+        print("meta info:", self.gb_meta.meta.encoding_info)
+        
+        # build meta dataset and generate project_directory
+        self.gb_meta.run(self.root_dir)
+        project_dir = self.gb_meta.meta.project_dir
+        
+        # video encoding
+        t0_set = self.gb_video.run(project_dir, self.gb_meta.meta.recording_start, 
+                                   encoding_info, copy_raw_video=True)
+        
+        # arrange usv files
+        self.gb_usv.run(self.gb_meta.meta, t0_set)
+        
+        # arrange RFID dataset
+        self.gb_rfid.run(self.gb_meta.meta, t0_set)
+        
+        
+        
+        
+        
+        # 
         
         # split directories first
-        t_seg = self.gb_video.spin_seg.value() * 60 # minutes (int)
-        dur_set, encode_info = self.gb_video.encode_video(self.root_dir, t_seg)
-        self.gb_meta.meta.set_videoinfo(encode_info)
+        # dur_set, encode_info = self.gb_video.encode_video(self.root_dir, t_seg)
+        # self.gb_meta.meta.set_videoinfo(encode_info)
+        
+        # generate 
+        
+        # split videos
+        
         
         # execute meta data setting
-        meta_subset = self.gb_meta.run(self.root_dir, dur_set)
-        self.gb_video.run(self.root_dir, meta_subset)
+        # meta_subset = self.gb_meta.run(self.root_dir, dur_set)
+        # self.gb_video.run(self.root_dir, meta_subset)
         
         # meta_subset = self.gb_meta.run(self.root_dir, t_seg)
         # self.gb_video.run(self.root_dir, t_seg, meta_subset)

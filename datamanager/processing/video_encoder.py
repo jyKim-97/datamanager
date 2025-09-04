@@ -10,6 +10,8 @@ import uuid
 from tqdm import tqdm
 import shutil
 from typing import Dict, List
+from copy import deepcopy
+from datetime import datetime, timedelta
 
 
 BAR_WIDTH = 40
@@ -28,37 +30,57 @@ class VideoInfo:
     duration: float # minutes
     codec: str
     bitrate: int # M
+    
+    
+# def encode_video(root_dir, input_video_files, t_seg, opt_encoding, pbar_obj):
+#     enc_directory = None
 
 
-def process_video(root_dir, input_file, t_seg, opt_encoding, pbar_obj):
-    buf_path = make_temporal_dir(root_dir)
+def encode_video(project_dir, input_file, recording_start: datetime, opt_encoding, pbar_obj=None, copy_raw_video=False):
     
-    # cut raw video
-    cut_raw_video(input_file=input_file,
-                  output_file=os.path.join(buf_path, prefix_raw),
-                  segment_time=t_seg,
-                  pbar_obj=pbar_obj, desc="cutting raw video")
+    fenc = os.path.join(project_dir, "video")
+    os.makedirs(fenc, exist_ok=False)
     
-    fnames_raw = [f for f in os.listdir(buf_path) if prefix_raw in f]
-    fnames_raw = sorted(fnames_raw, key=lambda x: int(x.split("_")[-1].split(".")[0]))
+    # print("duration: ", get_video_duration(input_file))
+    # print("encoding duration:", opt_encoding.duration)
+
+    # encode video
+    compress_video_with_progress(input_file=input_file,
+                                #  output_file=os.path.join(fenc, "%s_%03d.%s"%(prefix_enc, n, ext_enc))
+                                 output_file=os.path.join(fenc, "%s_%%03d.%s"%(prefix_enc, ext_enc)),
+                                 fps=opt_encoding.fps,
+                                 bitrate=f"{opt_encoding.bitrate}M",
+                                 resolution=f"{opt_encoding.width}:{opt_encoding.height}",
+                                 segment_time=opt_encoding.duration*60, # min -> sec
+                                 pbar_obj=pbar_obj, desc="encoding video")
     
-    dur_set = []
-    for n, f in enumerate(fnames_raw):
+    t0_set = [recording_start]
+    for f in [f for f in os.listdir(fenc) if ext_enc in f]:
+        fsrc = os.path.join(fenc, f)
+        dur = get_video_duration(fsrc)
+        t0_set.append(t0_set[-1] + timedelta(minutes=dur))
+    
+    # move file names
+    # t0 = recording_start
+    # t0 = datetime(25,1,1,0,0,0)
+    # for f in [f for f in os.listdir(fenc) if ext_enc in f]:
+    #     fsrc = os.path.join(fenc, f)
+    #     fdst = os.path.join(fenc, "video_%s.%s"%(t0.strftime("%H%M%S"), ext_enc))
+    #     # fdst = os.path.join(fenc, "video_%s.%s"%(t0.strftime("%y%m%dT%H%M"), ext_enc))
+    #     # print("move video: %s to %s"%(fsrc, fdst))
+    #     shutil.move(fsrc, fdst)
+
+    #     dur = get_video_duration(fdst)
+    #     # print("duration: ", dur)
+    #     t0 = t0 + timedelta(minutes=dur)
+    
+    if copy_raw_video:
+        basedir = os.path.dirname(project_dir)
+        os.makedirs(os.path.join(basedir, "RAW_VIDEO"), exist_ok=True)
+        shutil.copy(input_file, os.path.join(basedir, "RAW_VIDEO", "video_" + os.path.basename(input_file)))
         
-        f = os.path.join(buf_path, f)
-        dur = get_video_duration(f)
-        
-        compress_video_with_progress(input_file=f,
-                                     output_file=os.path.join(buf_path, "%s_%03d.%s"%(prefix_enc, n, ext_enc)),
-                                     fps=opt_encoding.fps,
-                                     bitrate=f"{opt_encoding.bitrate}M",
-                                     resolution=f"{opt_encoding.width}:{opt_encoding.height}",
-                                     pbar_obj=pbar_obj, desc="encoding video #%03d"%(n))
-        
-        dur_set.append(dur)
-    
-    return buf_path, dur_set
-    
+    return t0_set
+
     
 def move_encoded_files(buf_path, raw_video_dir, meta_subset):
     fnames_raw = [f for f in os.listdir(buf_path) if "raw" in f]
@@ -113,7 +135,7 @@ def get_video_info(input_file):
         width=int(video['width']),
         height=int(video['height']),
         fps=eval(video['r_frame_rate']),
-        duration=float(info['format']['duration']),
+        duration=float(info['format']['duration'])/60, # min
         codec=video['codec_name'],
         bitrate=int(info['format']['bit_rate']),
     )
@@ -149,7 +171,7 @@ def run_with_ffmpeg_progress(duration_func):
         def wrapper(*args, **kwargs):
             def _parse_progress(process):
                 input_file = kwargs.get("input_file")
-                duration = duration_func(input_file)
+                duration = duration_func(input_file) * 60 # min -> sec
                 pbar_obj = kwargs.get("pbar_obj", tqdm)
                 desc = kwargs.get("desc", "Encoding")
 
@@ -165,6 +187,7 @@ def run_with_ffmpeg_progress(duration_func):
                             break
                         line = line.strip()
                         error_lines.append(line)
+                        # print(line)
 
                         match = re.search(r'time=(\d+):(\d+):(\d+\.?\d*)', line)
                         if match:
@@ -193,7 +216,7 @@ def run_with_ffmpeg_progress(duration_func):
 
             cuda_converted = False
             if TRY_CUDA_FIRST and "-c:v" in cmd["out_opt"]: # Use hardware acceleration only for encoding
-                cmd_cuda = cmd.copy()
+                cmd_cuda = deepcopy(cmd)
                 cmd_cuda["begin"].extend(["-hwaccel", "nvdec", "-hwaccel_output_format", "cuda"])
                 # change codec
                 idx = cmd_cuda["out_opt"].index("-c:v")
@@ -210,15 +233,17 @@ def run_with_ffmpeg_progress(duration_func):
                 cmd_build = _build_cmd(cmd)
             
             try:
-                print(cmd_build)
                 process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                 _parse_progress(process)
             except RuntimeError as e:
                 if cuda_converted:
+                    print("Failed to use CUDA encoder")
+                    # print(cmd)
                     cmd_build = _build_cmd(cmd)
                     process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                     _parse_progress(process)
-                raise e
+                else:
+                    raise e
             
         return wrapper
     return decorator

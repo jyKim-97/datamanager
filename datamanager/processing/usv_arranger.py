@@ -1,10 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 import os
 import shutil
 import csv
 from tqdm import tqdm
 import sqlite3
+# from utils import strftime_hms
+from . import utils
+
+# import sys
+# sys.path.append("./")
+# import utils
+
+usv_rel_dir = "./usv/"
 
 
 class USVReader:
@@ -28,9 +36,14 @@ class USVReader:
         with open(self.usv_file, 'r') as fp:
             self.usv_dir = fp.readline()[:-1]
             line = fp.readline()
+            # n = 0
             while line:
                 labels = line.split("\t")
                 dt = self.get_recording_time(labels[0], labels[1])
+                # print(labels[1], dt)
+                # n+=1
+                # if n == 2:
+                #     raise ValueError("Check USV log file format")
                 
                 if "Monitoring" in line:
                     if "started" in line:
@@ -68,39 +81,53 @@ def get_aligned_recording_set(file_path_set: List[str]):
     return merge_usv_logs(usv_readers)
 
 
-def move_target_files(dt_start, dt_end, target_dir, merged, pbar_obj=tqdm, **kwargs):
-    os.makedirs(target_dir, exist_ok=True)
-    summary_path = os.path.join(target_dir, "usv_table.csv")
+def move_target_files(t0_set: List, project_dir: str, merged, pbar_obj=tqdm, **kwargs):
+    
+    usv_dir = os.path.join(project_dir, usv_rel_dir)
+    os.makedirs(usv_dir, exist_ok=True)
+    summary_path = os.path.join(project_dir, "usv_table.csv")
     
     # search number of dataset
+    tmin, tmax = t0_set[0], t0_set[-1]+timedelta(seconds=1)
     num_total = 0
-    for dt, _, _, _ in merged:
-        if dt_start <= dt < dt_end:
+    for t, _, _, _ in merged:
+        if tmin <= t < tmax:
             num_total += 1
     
     # write with file
     fp_csv = open(summary_path, "w", newline='')
     writer = csv.writer(fp_csv)
-    writer.writerow(["date", "time", "time_delta", "file name", "duration", "device ID"])
+    writer.writerow(["date", "time", "video_id", "time_delta", "duration", "device_id", "filename"])
     
     desc = kwargs.get("desc", "Moving USV files")
     pbar = pbar_obj(total=num_total, desc=desc, ncols=100)
+    
     new_id = 0
-    for dt, src_path, dur, dev_id in merged:
-        if dt_start <= dt < dt_end:
+    video_id = 0
+    for t, src_path, dur, dev_id in merged:
+        if tmin <= t < tmax:
             filename = "usv_%07d.wav"%(new_id)
-            dst_path = os.path.join(target_dir, filename)
+            dst_path = os.path.join(usv_dir, filename)
             shutil.move(src_path, dst_path)
             
+            # assert ascending order
+            if t >= t0_set[video_id+1]:
+                video_id += 1
             new_id += 1
+            
+            assert video_id < len(t0_set)-1
+            
+            t0 = t0_set[video_id]
             writer.writerow([
-                dt.strftime("%m/%d/%y"),
-                dt.strftime("%H:%M:%S.%f")[:-3],
-                timedelta_to_str(dt-dt_start),
-                filename,
+                t.strftime("%m/%d/%y"),
+                utils.strftime_hms(t),
+                video_id,
+                utils.timedelta_to_hms(t-t0),
                 f"{dur:.1f}",
-                f"{dev_id}"
+                f"{dev_id}",
+                os.path.join(usv_rel_dir, filename)
             ])
+            
             pbar.update(1)
     
     pbar.close()
@@ -126,18 +153,18 @@ def copy_csv2sql(summary_path: str):
         CREATE TABLE IF NOT EXISTS usv_events (
             date TEXT,
             time TEXT,
+            video_id INTEGER,
             time_delta TEXT,
-            file_name TEXT,
             duration REAL,
-            device_id INTEGER
+            device_id INTEGER,
+            filename TEXT
         )
     """)
     
     for row in reader:
-        # print(row)
         cursor.execute(
-            "INSERT INTO usv_events (date, time, time_delta, file_name, duration, device_id) VALUES (?, ?, ?, ?, ?, ?)",
-            (row['date'], row['time'], row['time_delta'], row['file name'], float(row['duration']), int(row['device ID']))
+            "INSERT INTO usv_events (date, time, video_id, time_delta, duration, device_id, filename) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (row['date'], row['time'], int(row["video_id"]), row['time_delta'], float(row['duration']), int(row['device_id']), row['filename'])
         )
     
     fp.close()
@@ -156,25 +183,31 @@ def read_usv_sqlite(db_path):
     conn.close()
     
                 
-def timedelta_to_str(dt_delta):
-    total_seconds = dt_delta.total_seconds()
-    hours = int(total_seconds // 3600)
-    minutes = int((total_seconds % 3600) // 60)
-    seconds = int(total_seconds % 60)
-    milliseconds = int((total_seconds % 1) * 1000)
-    return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
+# def timedelta_to_str(dt_delta):
+#     total_seconds = dt_delta.total_seconds()
+#     hours = int(total_seconds // 3600)
+#     minutes = int((total_seconds % 3600) // 60)
+#     seconds = int(total_seconds % 60)
+#     milliseconds = int((total_seconds % 1) * 1000)
+#     return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
 
 
-def organize_usv_files(usv_logs, meta_subset, pbar_obj=tqdm):
+# def organize_usv_files(usv_logs, meta_subset, pbar_obj=tqdm):
+#     merged = get_aligned_recording_set(usv_logs)
+#     for n, meta_sub in enumerate(meta_subset, start=1):
+#         dt_start = meta_sub.recording_start
+#         dt_end = meta_sub.recording_end
+#         target_dir = os.path.join(meta_sub.project_dir, "usv")
+#         os.mkdir(target_dir)
+#         move_target_files(dt_start, dt_end, target_dir, merged,
+#                           pbar_obj=pbar_obj, desc="Move usv#%d"%(n))
+
+def organize_usv_files(usv_logs: List, t0_set: List, project_dir, pbar_obj=tqdm):
     merged = get_aligned_recording_set(usv_logs)
-    for n, meta_sub in enumerate(meta_subset, start=1):
-        dt_start = meta_sub.recording_start
-        dt_end = meta_sub.recording_end
-        target_dir = os.path.join(meta_sub.project_dir, "usv")
-        os.mkdir(target_dir)
-        move_target_files(dt_start, dt_end, target_dir, merged,
-                          pbar_obj=pbar_obj, desc="Move usv#%d"%(n))
-
+    # target_dir = os.path.join(project_dir, usv_rel_dir)
+    # os.makedirs(target_dir, exist_ok=False)
+    move_target_files(t0_set, project_dir, merged, 
+                      pbar_obj=pbar_obj, desc="Move usv files")
     
 if __name__ == "__main__":
     from pprint import pprint

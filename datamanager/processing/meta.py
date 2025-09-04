@@ -144,6 +144,7 @@ def _export2json(obj: ExperimentMetaClass):
     data["recording_end"] = data["recording_end"].isoformat()
     data["project_dir"] = os.path.basename(obj.project_dir)
     data["encoding_info"] = obj.encoding_info
+    print(obj.encoding_info)
     
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)

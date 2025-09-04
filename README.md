@@ -34,7 +34,7 @@
     - log file을 선택 필요 (e.g. ch1.log)
     - 기본 4개 선택이 가능하며, 원하면 추가하거나 (Add USV) 뺄 수 있음 (Delete USV).
 6) RFID 파일 선택
-    - 추후 추가 예정
+    - RFID recording 데이터 (csv파일) 선택
 7) Experiment metadata (실험자가 입력)
     - experiment_name: 실험 이름 (e.g. Global STEAM Project)
     - experimenter: 실험자 이름 (e.g. John Doe)
@@ -52,33 +52,27 @@ root_dir
 ├───summary.xlsx
 ├───RAW_VIDEO
     ├───raw_250206T1430.avi
-    ├───raw_250206T1531.avi
-├───Data_250206T1430-250206T1531
+    ├───...
+├───Data_250206T1430-250207T1430
     ├───meta.json
-    ├───encoded_250206T1430.avi
+    ├───usv_table.csv // video ID가 encoding된 video의 number
+    ├───usv_table.sqlite
+    ├───rfid_table.csv
+    ├───video
+        └───encoded_000.avi // segment duration 간격으로 잘림
+        └───encoded_001.avi    
+        └───encoded_002.avi    
+        └───...
     ├───usv
-        └───usv_table.xlsx
-        └───usv_table.sqlite
-        └───usv0000000.wav
-        └───usv0000001.wav
-        └───usv0000002.wav
-        └───usv0000003.wav
-        ...
-├───Data_250206T1531-250206T11630
-    ├───meta.json
-    ├───encoded_250206T1531.avi
-    ├───usv
-        └───usv_table.xlsx
-        └───usv_table.sqlite
-        └───usv0000000.wav
-        └───usv0000001.wav
-        └───usv0000002.wav
-        └───usv0000003.wav
+        └───usv_0000000.wav
+        └───usv_0000001.wav
+        └───usv_0000002.wav
+        └───usv_0000003.wav
         ...
 ```
 
 ## RAW_VIDEO
-- 원본 영상과 동일한 세팅에서, [Segment duration]간격으로 잘린 영상들이 저장됨. 기존의 영상도 보존되기에 실행 전에 반드시 저장장치 용량 확인 필요
+- 원본 영상 파일이 복사됨. 기존의 영상도 보존되기에 실행 전에 반드시 저장장치 용량 확인 필요
 - raw뒤의 숫자는 날짜-시간으로 예를 들어 250206T1430은 25년 2월 6일 14시 30분에 해당 (KST)
 
 ## summary.xlsx
@@ -113,13 +107,26 @@ root_dir
 ```
 
 ### encoded video (encoded_*)
-- 잘린 원본 영상을 선택한 encoding option으로 인코딩된 영상. 뒤의 숫자는 raw video와 동일
+- 잘린 원본 영상을 선택한 encoding option으로 인코딩된 영상
 
 ### usv
 - 여러 채널에서 Recording된 USV데이터들을 비디오 시간에 맞춰 정렬시킴
-#### usv_table.xlsx
-- 각 usv 파일 (file name)에 대해 recording time과 (date, time), 비디오 recording 시작 시간과의 차이 (time_delta), recording duration (dur), device ID (USV channel 1-4) 정보를 담고 있음. 
-- 추후에 특정 시간에서 발생한 USV정보를 찾고 싶으면 해당 파일을 참조 
-
+#### usv_table.csv
+- date: USV 측정 날짜 (절대시간 기준)
+- time: USV 측정 시간 (절대시간 기준)
+- video_id: 해당 event가 recording된 video ID (video/encoded_*에 해당)
+- time_delta: 해당 event의 recording video ID 기준 시간 (video_ID=1, 10초인 경우, video/encoded_001.avi파일의 10초에 해당)
+- device_id: 해당 USV가 recording된 USV device ID
+- filename: 해당하는 usv 파일 위치 (상대경로)
 #### usv_table.sqlite
 - usv_table.xlsx와 같은 정보를 담고 있는 sql 파일
+
+### RFID
+#### rfid_table.csv
+- date: RFID 측정 날짜 (절대시간 기준)
+- time: RFID 측정 시간 (절대시간 기준)
+- video_id: 해당 event가 recording된 video ID (video/encoded_*에 해당)
+- time_delta: 해당 event의 recording video ID 기준 시간 (video_ID=1, 10초인 경우, video/encoded_001.avi파일의 10초에 해당)
+- zone_label: RFID zone label
+- uid: RFID 개체 ID
+- tag_no: RFID tag number

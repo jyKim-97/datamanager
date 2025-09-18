@@ -75,7 +75,7 @@ class QFileSelector(QWidget):
         
     def is_selected(self):
         if self.file_name == "":
-            QMessageBox.warning(self, "Warning", "Label %s: no file selected"%(self.label_text))
+            # QMessageBox.warning(self, "Warning", "Label %s: no file selected"%(self.label_text))
             return False
         else:
             return True 

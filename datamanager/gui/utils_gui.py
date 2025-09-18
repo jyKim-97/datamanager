@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QApplication, QMessageBox, QProgressBar
 from PyQt5.QtCore import Qt, QElapsedTimer, QTimer
 import traceback
-from ..processing import utils_log as ul
-
+# from ..processing import utils_log as ul
+from ..processing.utils_log import dm_logger
 
 def error2messagebox(to_warn=False):
     def decorator(func):
@@ -12,7 +12,8 @@ def error2messagebox(to_warn=False):
             except Exception as e:
                 # print(traceback.format_exc())
                 # print(e)
-                ul.log_error(traceback.format_exc())
+                # ul.log_error(traceback.format_exc())
+                dm_logger.error(traceback.format_exc())
                 if to_warn:
                     QMessageBox.warning(None, "Warning", str(e))
                 else:

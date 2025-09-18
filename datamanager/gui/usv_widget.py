@@ -60,7 +60,7 @@ class USVSetupGroup(QGroupBox, BaseWidget):
     
     def del_usv_selector(self):
         if self.num_usv == 0:
-            QMessageBox.warning(self, "Warning", "Empty USV slot")
+            # QMessageBox.warning(self, "Warning", "Empty USV slot")
             return
         
         self.layout_sel_usv.removeWidget(self.usv_selector.pop())

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import sqlite3
 # from utils import strftime_hms
 from . import utils
-from utils_log import dm_logger
+from .utils_log import dm_logger
 
 # import sys
 # sys.path.append("./")

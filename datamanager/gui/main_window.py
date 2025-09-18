@@ -90,10 +90,12 @@ class DataManagerGUI(QWidget):
                                    encoding_info, copy_raw_video=True)
         
         # arrange usv files
-        self.gb_usv.run(self.gb_meta.meta, t0_set)
+        if self.gb_meta.meta.is_usv:
+            self.gb_usv.run(self.gb_meta.meta, t0_set)
         
         # arrange RFID dataset
-        self.gb_rfid.run(self.gb_meta.meta, t0_set)
+        if self.gb_meta.meta.is_rfid:
+            self.gb_rfid.run(self.gb_meta.meta, t0_set)
         
         # 
         

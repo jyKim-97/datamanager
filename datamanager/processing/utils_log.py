@@ -6,7 +6,7 @@ dm_logger.setLevel(logging.INFO)
 
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(
-    logging.Formatter("%(asctime)s [%(levelname)s] %(message)")
+    logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 )
 dm_logger.addHandler(stream_handler)
 

@@ -2,6 +2,7 @@ import ffmpeg
 import subprocess
 import sys
 import os
+from pathlib import Path
 import re
 from time import strftime, gmtime
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ import shutil
 from typing import Dict, List
 from copy import deepcopy
 from datetime import datetime, timedelta
-from utils_log import dm_logger
+from .utils_log import dm_logger
 
 
 BAR_WIDTH = 40
@@ -78,8 +79,11 @@ def encode_video(project_dir, input_file, recording_start: datetime, opt_encodin
     if copy_raw_video:
         # basedir = os.path.dirname(project_dir)
         basename = os.path.basename(project_dir)
-        os.makedirs(os.path.join(project_dir, "RAW_VIDEO"), exist_ok=True)
-        shutil.copy(input_file, os.path.join(project_dir, "RAW_VIDEO", "video_" + basename[5:]))
+        ext = Path(input_file).suffix
+        os.makedirs(os.path.join(project_dir, "../RAW_VIDEO"), exist_ok=True)
+        fdst = os.path.join(project_dir, "../RAW_VIDEO", "video_" + basename[5:] + ext)
+        shutil.copy(input_file, fdst)
+        dm_logger.info("Raw video file copied to %s", fdst)
         
     return t0_set
 
@@ -204,12 +208,14 @@ def run_with_ffmpeg_progress(duration_func):
 
                 return_code = process.wait()
                 if return_code != 0:
-                    print("\n❌ FFmpeg encountered an error:")
+                    # print("\n❌ FFmpeg encountered an error:")
+                    dm_logger.error("FFmpeg encountered an error:")
                     for line in error_lines[-10:]:
-                        print("stderr:", line)
+                        dm_logger.error("stderr: %s", line)
                     raise RuntimeError("FFmpeg failed to process the video.")
                 else:
-                    print("Done")
+                    dm_logger.info("Done")
+                    # print("Done")
 
             def _build_cmd(cmd):
                 return cmd["begin"] + ["-i", cmd["input"]] + cmd["out_opt"] + [cmd["output"]]
@@ -234,14 +240,14 @@ def run_with_ffmpeg_progress(duration_func):
             else:
                 cmd_build = _build_cmd(cmd)
             try:
-                dm_logger.info(cmd_build)
+                dm_logger.info("Encoding options: %s", cmd_build)
                 process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                 _parse_progress(process)
             except RuntimeError as e:
                 if cuda_converted:
-                    dm_logger.error("="*50+"\nFailed to use CUDA encoder\n"+"="*50)
+                    dm_logger.error("Failed to use CUDA encoder")
                     cmd_build = _build_cmd(cmd)
-                    dm_logger.info(cmd_build)
+                    dm_logger.info("Encoding options: %s", cmd_build)
                     process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                     _parse_progress(process)
                 else:

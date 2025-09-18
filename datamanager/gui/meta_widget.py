@@ -10,6 +10,7 @@ from .base import BaseWidget
 from ..processing import meta
 from datetime import datetime
 from typing import List
+from ..processing.utils_log import dm_logger
 
 
 def editable_datetime():
@@ -107,7 +108,8 @@ class MetaSetupGroup(QGroupBox, BaseWidget):
         if self.dur is None:
             raise ValueError("Load video file first (or run 'update_duration' method first)")
         self.meta = self.build_meta()
-        print(self.meta)
+        # print(self.meta)
+        dm_logger.info("Meta info: %s", self.meta)
         
         # make directory for the video
         self.meta.make_project_dir(root_dir)

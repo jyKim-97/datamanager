@@ -7,6 +7,7 @@ from tqdm import tqdm
 import sqlite3
 # from utils import strftime_hms
 from . import utils
+from utils_log import dm_logger
 
 # import sys
 # sys.path.append("./")
@@ -208,6 +209,7 @@ def organize_usv_files(usv_logs: List, t0_set: List, project_dir, pbar_obj=tqdm)
     # os.makedirs(target_dir, exist_ok=False)
     move_target_files(t0_set, project_dir, merged, 
                       pbar_obj=pbar_obj, desc="Move usv files")
+    dm_logger.info("USV files are moved to %s", os.path.join(project_dir, "usv"))    
     
 if __name__ == "__main__":
     from pprint import pprint

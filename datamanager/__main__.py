@@ -3,6 +3,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 import argparse
 
+
 def build_args():
     parser = argparse.ArgumentParser(description="Data Manager GUI")
     parser.add_argument("--root_dir", type=str, default=None)

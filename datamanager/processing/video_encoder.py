@@ -12,6 +12,7 @@ import shutil
 from typing import Dict, List
 from copy import deepcopy
 from datetime import datetime, timedelta
+from utils_log import dm_logger
 
 
 BAR_WIDTH = 40
@@ -232,15 +233,15 @@ def run_with_ffmpeg_progress(duration_func):
                 cuda_converted = True
             else:
                 cmd_build = _build_cmd(cmd)
-            
             try:
+                dm_logger.info(cmd_build)
                 process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                 _parse_progress(process)
             except RuntimeError as e:
                 if cuda_converted:
-                    print("Failed to use CUDA encoder")
-                    # print(cmd)
+                    dm_logger.error("="*50+"\nFailed to use CUDA encoder\n"+"="*50)
                     cmd_build = _build_cmd(cmd)
+                    dm_logger.info(cmd_build)
                     process = subprocess.Popen(cmd_build, stderr=subprocess.PIPE, universal_newlines=True)
                     _parse_progress(process)
                 else:

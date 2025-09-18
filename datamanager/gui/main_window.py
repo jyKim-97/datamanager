@@ -9,6 +9,7 @@ from .meta_widget import MetaSetupGroup
 from .rfid_widget import RFIDSetupGroup
 from .custom_widget import QFileSelector, QSpinBox_inline
 from .utils_gui import error2messagebox
+from ..processing import utils_log as ul
 
 
 class DataManagerGUI(QWidget):
@@ -82,6 +83,7 @@ class DataManagerGUI(QWidget):
         # build meta dataset and generate project_directory
         self.gb_meta.run(self.root_dir)
         project_dir = self.gb_meta.meta.project_dir
+        self._log_default_settings(project_dir)        
         
         # video encoding
         t0_set = self.gb_video.run(project_dir, self.gb_meta.meta.recording_start, 
@@ -92,10 +94,6 @@ class DataManagerGUI(QWidget):
         
         # arrange RFID dataset
         self.gb_rfid.run(self.gb_meta.meta, t0_set)
-        
-        
-        
-        
         
         # 
         
@@ -115,3 +113,10 @@ class DataManagerGUI(QWidget):
         # meta_subset = self.gb_meta.run(self.root_dir, t_seg)
         # self.gb_video.run(self.root_dir, t_seg, meta_subset)
         # self.gb_usv.run(meta_subset)
+        
+    def _log_default_settings(self, project_dir):
+        ul.add_file_logger(project_dir + "/log.txt")
+        ul.dm_logger.info("Project directory: %s", project_dir)
+        ul.dm_logger.info("VIDEO: %s", self.gb_meta.meta.is_video)
+        ul.dm_logger.info("USV: %s", self.gb_meta.meta.is_usv)
+        ul.dm_logger.info("RFID: %s", self.gb_meta.meta.is_rfid)
